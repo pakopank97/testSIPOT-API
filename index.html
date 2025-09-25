@@ -1,157 +1,183 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Validador de Reportes</title>
-    <link href="https://framework-gb.cdn.gob.mx/assets/styles/main.css" rel="stylesheet">
-    <style>
-        #loading-spinner, #success-message { display: none; margin-top: 20px; margin-bottom: 20px; }
-        #success-message { font-size: 1.5em; font-weight: bold; color: #28a745; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pre-Validador SIPOT</title>
+
+  <!-- UI Kit gob.mx -->
+  <link href="https://framework-gb.cdn.gob.mx/assets/styles/main.css" rel="stylesheet" />
+  <style>
+    /* Mantener layout limpio */
+    #loading-spinner, #success-message { display: none; margin-top: 20px; margin-bottom: 20px; }
+    /* Fila de descargas: rojo izq, verde der */
+    #download-row { margin-top: 20px; display: none; }
+  </style>
 </head>
 <body>
-    <main class="container">
-        <div class="row">
-            <div class="col-md-12">
-                <h1>Cargador y Validador de Reportes</h1><hr>
-                <div class="well">
-                    <div class="form-group">
-                        <label for="archivoExcel">Selecciona un archivo de Excel para procesar:</label>
-                        <input type="file" id="archivoExcel" class="form-control-file" accept=".xlsx, .xls">
-                    </div>
-                    <button id="btnProcesar" class="btn btn-primary">Procesar y Validar</button>
-                    <p id="status" class="small">Por favor, selecciona un archivo.</p>
-                </div>
 
-                <div id="loading-spinner" class="text-center">
-                    <div class="spinner-border text-primary" role="status"><span class="sr-only">Cargando...</span></div>
-                    <p id="loading-text" class="mt-2">Subiendo archivo...</p>
-                </div>
+  <!-- El script gobmx.js inyecta header/footer de Gobierno de México -->
+  <header></header>
 
-                <div id="error-container" class="alert alert-danger" style="display: none;">
-                    <h4 id="error-title">Reporte de Errores</h4>
-                    <ul id="error-list"></ul>
-                </div>
-                
-                <div id="success-message" class="text-center">
-                    <p>La información está correcta y es válida</p>
-                </div>
+  <main class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <h1>Pre-Validador SIPOT</h1>
+        <hr />
 
-                <!-- Botón reutilizable tanto para Excel corregido como JSON -->
-                <div class="text-center" style="margin-top:20px;">
-                    <a id="btnDownload" class="btn btn-success" style="display: none;">Descargar</a>
-                </div>
-            </div>
+        <div class="well">
+          <div class="form-group">
+            <label for="archivoExcel">Selecciona un archivo de Excel para procesar:</label>
+            <input type="file" id="archivoExcel" class="form-control-file" accept=".xlsx, .xls" />
+          </div>
+          <button id="btnProcesar" class="btn btn-primary">Procesar y Validar</button>
+          <p id="status" class="small">Por favor, selecciona un archivo.</p>
         </div>
-    </main>
 
-    <script src="https://framework-gb.cdn.gob.mx/gobmx.js"></script>
-    <script>
-        const btnProcesar = document.getElementById('btnProcesar');
-        const statusEl = document.getElementById('status');
-        const errorContainer = document.getElementById('error-container');
-        const errorList = document.getElementById('error-list');
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const loadingText = document.getElementById('loading-text');
-        const successMessage = document.getElementById('success-message');
-        const btnDownload = document.getElementById('btnDownload');
-        const errorTitle = document.getElementById('error-title');
-        
-        const serverUrl = 'http://127.0.0.1:5000';
+        <div id="loading-spinner" class="text-center">
+          <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Cargando...</span>
+          </div>
+          <p id="loading-text" class="mt-2">Subiendo archivo...</p>
+        </div>
 
-        // Mostrar resultado final
-        function displayFinalResult(result) {
-            loadingSpinner.style.display = 'none';
+        <div id="error-container" class="alert alert-danger" style="display:none;">
+          <h4 id="error-title">Reporte de Errores</h4>
+          <ul id="error-list"></ul>
+        </div>
 
-            if (result.status === 'error') {
-                statusEl.innerHTML = `<strong>${result.message}</strong>`;
-                errorList.innerHTML = "";
-                result.errors.forEach(msg => {
-                    const li = document.createElement('li');
-                    li.textContent = msg;
-                    errorList.appendChild(li);
-                });
-                errorTitle.textContent = "Reporte de Errores";
-                errorContainer.style.display = 'block';
+        <div id="success-message" class="text-center" style="display:none;">
+          <p>La información está correcta y es válida</p>
+        </div>
 
-                // Botón de descarga del Excel corregido
-                btnDownload.href = `${serverUrl}/download/${result.download_file}`;
-                btnDownload.download = result.download_file;
-                btnDownload.textContent = "Descargar Excel Corregido";
-                btnDownload.style.display = 'inline-block';
+        <!-- Fila de descargas: rojo izquierda, verde derecha -->
+        <div id="download-row" class="row">
+          <div class="col-xs-6 text-left">
+            <a id="btnOriginal" class="btn btn-danger" style="display:none;">Descargar Excel con Errores</a>
+          </div>
+          <div class="col-xs-6 text-right">
+            <a id="btnDownload" class="btn btn-success" style="display:none;">Descargar</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
 
-            } else if (result.status === 'success') {
-                statusEl.textContent = 'Validación completa.';
-                successMessage.style.display = 'block';
+  <footer></footer>
 
-                // Botón de descarga del JSON
-                btnDownload.href = `${serverUrl}/download/${result.download_file}`;
-                btnDownload.download = `json_backend.json`;
-                btnDownload.textContent = "Descargar JSON Backend";
-                btnDownload.style.display = 'inline-block';
-            } else {
-                 throw new Error(result.error || 'Respuesta desconocida del servidor.');
-            }
-        }
+  <!-- Reponer script que inyecta header/footer -->
+  <script src="https://framework-gb.cdn.gob.mx/gobmx.js"></script>
 
-        // Pregunta al servidor cada 3 segundos
-        function pollForStatus(taskId) {
-            const intervalId = setInterval(async () => {
-                try {
-                    const response = await fetch(`${serverUrl}/status/${taskId}`);
-                    const data = await response.json();
+  <script>
+    const btnProcesar     = document.getElementById('btnProcesar');
+    const statusEl        = document.getElementById('status');
+    const errorContainer  = document.getElementById('error-container');
+    const errorList       = document.getElementById('error-list');
+    const loadingSpinner  = document.getElementById('loading-spinner');
+    const loadingText     = document.getElementById('loading-text');
+    const successMessage  = document.getElementById('success-message');
+    const btnDownload     = document.getElementById('btnDownload');     // verde (derecha)
+    const btnOriginal     = document.getElementById('btnOriginal');     // rojo (izquierda)
+    const downloadRow     = document.getElementById('download-row');
 
-                    if (data.status === 'complete') {
-                        clearInterval(intervalId);
-                        displayFinalResult(data.result);  // 👈 aquí usamos solo data.result
-                    } else if (data.status === 'failed') {
-                        clearInterval(intervalId);
-                        throw new Error(`El procesamiento en el servidor falló: ${data.error}`);
-                    }
-                } catch (error) {
-                    clearInterval(intervalId);
-                    loadingSpinner.style.display = 'none';
-                    statusEl.innerHTML = `<strong>Error de comunicación:</strong> ${error.message}.`;
-                }
-            }, 3000);
-        }
+    // ⚠️ Ajusta si no usas localhost
+    const serverUrl = 'http://127.0.0.1:5000';
 
-        // Botón de procesar archivo
-        btnProcesar.addEventListener('click', async () => {
-            const archivo = document.getElementById('archivoExcel').files[0];
-            if (!archivo) { return; }
+    function displayFinalResult(result, task) {
+      loadingSpinner.style.display = 'none';
+      downloadRow.style.display = 'block';      // muestra la fila de botones
 
-            const formData = new FormData();
-            formData.append('archivo', archivo);
-
-            statusEl.textContent = 'Iniciando subida...';
-            errorContainer.style.display = 'none';
-            errorList.innerHTML = '';
-            successMessage.style.display = 'none';
-            btnDownload.style.display = 'none';
-            loadingText.textContent = 'Subiendo archivo...';
-            loadingSpinner.style.display = 'block';
-
-            try {
-                const response = await fetch(`${serverUrl}/upload`, { method: 'POST', body: formData });
-                const result = await response.json();
-
-                if (result.error) {
-                    throw new Error(result.error);
-                }
-                
-                if (result.task_id) {
-                    loadingText.textContent = 'Archivo subido. Procesando y validando (esto puede tardar)...';
-                    pollForStatus(result.task_id);
-                }
-
-            } catch (error) {
-                loadingSpinner.style.display = 'none';
-                statusEl.innerHTML = `<strong>Error Crítico:</strong> ${error.message}.`;
-            }
+      if (result.status === 'error') {
+        statusEl.innerHTML = `<strong>${result.message}</strong>`;
+        errorList.innerHTML = "";
+        result.errors.forEach(msg => {
+          const li = document.createElement('li');
+          li.textContent = msg;
+          errorList.appendChild(li);
         });
-    </script>
+        errorContainer.style.display = 'block';
+
+        // Botón verde (Excel corregido)
+        btnDownload.href = `${serverUrl}/download/${result.download_file}`;
+        btnDownload.download = result.download_file;
+        btnDownload.textContent = "Descargar Excel Corregido";
+        btnDownload.style.display = 'inline-block';
+
+      } else if (result.status === 'success') {
+        statusEl.textContent = 'Validación completa.';
+        successMessage.style.display = 'block';
+
+        // Botón verde (JSON)
+        btnDownload.href = `${serverUrl}/download/${result.download_file}`;
+        btnDownload.download = `json_backend.json`;
+        btnDownload.textContent = "Descargar JSON Backend";
+        btnDownload.style.display = 'inline-block';
+      } else {
+        throw new Error(result.error || 'Respuesta desconocida del servidor.');
+      }
+
+      // Botón rojo (siempre que tengamos archivo original en la tarea)
+      if (task && task.original_file) {
+        btnOriginal.href = `${serverUrl}/download/${task.original_file}`;
+        btnOriginal.download = task.original_file;
+        btnOriginal.style.display = 'inline-block';
+      }
+    }
+
+    function pollForStatus(taskId) {
+      const intervalId = setInterval(async () => {
+        try {
+          const response = await fetch(`${serverUrl}/status/${taskId}`);
+          const data = await response.json();
+
+          if (data.status === 'complete') {
+            clearInterval(intervalId);
+            displayFinalResult(data.result, data);
+          } else if (data.status === 'failed') {
+            clearInterval(intervalId);
+            throw new Error(`El procesamiento en el servidor falló: ${data.error}`);
+          }
+        } catch (error) {
+          clearInterval(intervalId);
+          loadingSpinner.style.display = 'none';
+          statusEl.innerHTML = `<strong>Error de comunicación:</strong> ${error.message}.`;
+        }
+      }, 3000);
+    }
+
+    btnProcesar.addEventListener('click', async () => {
+      const archivo = document.getElementById('archivoExcel').files[0];
+      if (!archivo) { return; }
+
+      const formData = new FormData();
+      formData.append('archivo', archivo);
+
+      // Reset UI
+      statusEl.textContent = 'Iniciando subida...';
+      errorContainer.style.display = 'none';
+      errorList.innerHTML = '';
+      successMessage.style.display = 'none';
+      btnDownload.style.display = 'none';
+      btnOriginal.style.display = 'none';
+      downloadRow.style.display = 'none';
+      loadingText.textContent = 'Subiendo archivo...';
+      loadingSpinner.style.display = 'block';
+
+      try {
+        const response = await fetch(`${serverUrl}/upload`, { method: 'POST', body: formData });
+        const result = await response.json();
+
+        if (result.error) throw new Error(result.error);
+        if (result.task_id) {
+          loadingText.textContent = 'Archivo subido. Procesando y validando (esto puede tardar)...';
+          pollForStatus(result.task_id);
+        }
+      } catch (error) {
+        loadingSpinner.style.display = 'none';
+        statusEl.innerHTML = `<strong>Error Crítico:</strong> ${error.message}.`;
+      }
+    });
+  </script>
 </body>
 </html>
